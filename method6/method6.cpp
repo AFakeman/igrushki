@@ -85,7 +85,7 @@ VOID WINAPI MyCompletionRoutine(
 		goto out;
 	}
 
-  // Compute CRC
+  // Compute CRC incrementally.
   task->crc =
       crc(task->crc, task->buf, dwRead);
 
@@ -115,6 +115,7 @@ int wmain(int argc, WCHAR *argv[]) {
       printf("CreateFile failed with %lu \n", GetLastError());
       return 0;
     }
+    // Add the callback that handles all async read/write operations
     if (!BindIoCompletionCallback(tasks[i - 1].hFile, MyCompletionRoutine, 0))
     {
       printf("BindIoCompletionCallback failed with %lu \n", GetLastError());
@@ -134,6 +135,7 @@ int wmain(int argc, WCHAR *argv[]) {
 
   size_t tasks_done = 0;
 
+  // Wait for tasks to complete.
   do {
     tasks_done = 0;
     Sleep(500);
