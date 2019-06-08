@@ -77,19 +77,19 @@ VOID WINAPI MyCompletionRoutine(
 	LPOVERLAPPED lpOverlapped)
 {
 	const auto myOperation = (PMY_OPERATION)lpOverlapped;
+  Task *task = myOperation->task;
+  task->offset += dwRead;
 	if (0 != dwErrorCode)
 	{
 		printf("Operation failed with %lu \n", dwErrorCode);
 		goto out;
 	}
-  Task *task = myOperation->task;
-  task->offset += cbRead;
 
   // Compute CRC
   task->crc =
-      crc(task->crc, task->buf, cbRead);
+      crc(task->crc, task->buf, dwRead);
 
-  if (chunkSize == cbRead) {
+  if (chunkSize == dwRead) {
     assert(Method5(task->hFile, task->offset, chunkSize, task));
   } else {
     task->done = true;
@@ -115,32 +115,34 @@ int wmain(int argc, WCHAR *argv[]) {
       printf("CreateFile failed with %lu \n", GetLastError());
       return 0;
     }
+    if (!BindIoCompletionCallback(tasks[i - 1].hFile, MyCompletionRoutine, 0))
+    {
+      printf("BindIoCompletionCallback failed with %lu \n", GetLastError());
+      return 0;
+    }
     tasks[i - 1].offset = 0;
     tasks[i - 1].crc = 0;
     tasks[i - 1].done = 0;
     memset(&tasks[i - 1].buf, 0, sizeof(tasks[i - 1].buf));
   }
 
-	if (!BindIoCompletionCallback(hFile2, MyCompletionRoutine, 0))
-	{
-		printf("BindIoCompletionCallback failed with %lu \n", GetLastError());
-		return 0;
-	}
 
   // Create asyncronous read tasks.
   for (int i = 0; i < task_count; i++) {
     assert(Method5(tasks[i].hFile, 0, chunkSize, &tasks[i]));
   }
 
+  size_t tasks_done = 0;
+
   do {
+    tasks_done = 0;
     Sleep(500);
-    size_t tasks_done = 0;
-    for (size_t i = 0; i < task_count; task_count++) {
+    for (size_t i = 0; i < task_count; i++) {
       if (tasks[i].done) {
         tasks_done++;
       }
     }
-  } while (tasks_done != task_count)
+  } while (tasks_done != task_count);
 
   uint32_t total_crc = 0;
   for (int i = 0; i < task_count; i++) {
