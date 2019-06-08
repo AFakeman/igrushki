@@ -135,9 +135,13 @@ int wmain(int argc, WCHAR *argv[]) {
     }
   }
 
+  uint32_t crc = 0;
   for (int i = 0; i < task_count; i++) {
     printf("Task %d: %#010u\n", i, tasks[i].crc);
+    crc = crc(crc, &tasks[i].crc, sizeof(tasks[i].crc));
   }
+
+  printf("Total checksum: %u\n", crc);
   return 0;
 }
 
