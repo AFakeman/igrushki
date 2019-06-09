@@ -45,7 +45,8 @@ uint32_t crc (uint32_t prev_crc, char* buf, size_t len) {
   }
   uint32_t result = prev_crc;
   for (size_t i = 0; i < len; ++i) {
-    result = (result << 8) ^ crc_table[buf[i] ^ ((result) >> 24)];
+    size_t idx = ((result >> 24) ^ buf[i]) & 255;
+    result = (result << 8) ^ crc_table[idx];
   }
   return result;
 }
